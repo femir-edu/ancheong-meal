@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>안청초등학교 급식</title>
+<style>
+  :root{
+    --paper:#FAFAF6; --surface:#FFFFFF; --ink:#1E2A26; --muted:#7C857F;
+    --line:#E7E5DC; --board:#15564A; --coral:#E0613B; --coral-soft:#FBEAE3;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif;
+    -webkit-font-smoothing:antialiased;}
+  #app{max-width:520px;margin:0 auto;min-height:100vh;}
+  .spin{display:inline-block;animation:spin .9s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .topbar{background:var(--board);color:#fff;padding:18px 20px;}
+  .school-name{font-weight:800;font-size:19px;display:flex;align-items:center;gap:9px;}
+  .school-sub{font-size:12.5px;opacity:.82;margin-top:3px;}
+
+  .content{padding:18px;display:flex;flex-direction:column;gap:14px;}
+  .date-nav{display:flex;align-items:center;justify-content:space-between;gap:8px;
+    background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:8px 10px;}
+  .nav-btn{width:36px;height:36px;border-radius:9px;border:1px solid var(--line);background:#fff;
+    cursor:pointer;color:var(--ink);font-size:17px;}
+  .nav-btn:hover{background:var(--paper);}
+  .today-btn{border:1px solid var(--line);background:#fff;border-radius:9px;padding:0 12px;height:36px;
+    font-size:12.5px;font-weight:700;color:var(--coral);cursor:pointer;}
+  .date-mid{display:flex;flex-direction:column;align-items:center;gap:2px;}
+  .date-label{font-weight:800;font-size:17px;color:var(--coral);}
+  .date-input{border:none;background:transparent;color:var(--muted);font-size:12px;cursor:pointer;}
+
+  .meal-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;
+    padding:17px 17px 15px;border-top:3px solid var(--coral);}
+  .meal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;}
+  .meal-type{font-weight:800;font-size:15px;color:var(--coral);background:var(--coral-soft);
+    padding:3px 12px;border-radius:20px;}
+  .meal-cal{font-size:12.5px;color:var(--muted);}
+  .dish-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;}
+  .dish-list li{display:flex;align-items:baseline;gap:7px;font-size:16px;line-height:1.3;}
+  .dish-name{font-weight:500;}
+  .dish-codes{font-size:10.5px;color:#B9A99F;}
+  .allergy{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line);
+    font-size:11.5px;color:var(--muted);line-height:1.55;}
+  .more{margin-top:12px;font-size:13px;}
+  .more summary{cursor:pointer;color:var(--muted);font-weight:600;font-size:12.5px;}
+  .more-block{margin-top:9px;}
+  .more-block b{display:block;font-size:11.5px;color:var(--ink);margin-bottom:3px;}
+  .more-block p{margin:0;font-size:12.5px;color:var(--muted);line-height:1.55;}
+
+  .state{text-align:center;padding:46px 24px;color:var(--muted);}
+  .state-icon{font-size:32px;margin-bottom:12px;opacity:.55;}
+  .state-title{font-weight:700;font-size:16px;color:var(--ink);margin-bottom:6px;}
+  .state-desc{font-size:13px;line-height:1.6;}
+  .notice.err{background:var(--coral-soft);color:#9C3A1E;border-radius:12px;padding:13px 15px;
+    font-size:13px;line-height:1.55;}
+  .credit{text-align:center;padding:22px 16px 30px;font-size:12px;color:var(--muted);
+    border-top:1px solid var(--line);margin-top:8px;}
+  .credit b{color:var(--board);font-weight:700;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <div class="school-name">🏫 안청초등학교</div>
+    <div class="school-sub" id="sub">경상남도 · 급식 식단</div>
+  </div>
+  <div class="content">
+    <div class="date-nav">
+      <button class="nav-btn" id="prev">‹</button>
+      <div class="date-mid">
+        <span class="date-label" id="dateLabel">—</span>
+        <input class="date-input" type="date" id="dateInput">
+      </div>
+      <button class="nav-btn" id="next">›</button>
+    </div>
+    <div style="text-align:center;margin-top:-6px;">
+      <button class="today-btn" id="today">오늘</button>
+    </div>
+    <div id="body"><div class="state"><div class="spin" style="font-size:26px;">⏳</div></div></div>
+  </div>
+  <div class="credit">제작 · <b>임철용</b> &nbsp;|&nbsp; 자료 출처: NEIS 교육정보 개방 포털</div>
+</div>
+
+<script>
+"use strict";
+const HUB = "https://open.neis.go.kr/hub/";
+const SCHOOL_NAME = "안청초등학교";
+const REGION = "경상남도";
+// 인증키가 있으면 아래 따옴표 안에 넣으세요(없어도 급식은 조회됩니다).
+const API_KEY = "";
+
+const ALLERGY = {1:"난류",2:"우유",3:"메밀",4:"땅콩",5:"대두",6:"밀",7:"고등어",8:"게",9:"새우",10:"돼지고기",11:"복숭아",12:"토마토",13:"아황산류",14:"호두",15:"닭고기",16:"쇠고기",17:"오징어",18:"조개류",19:"잣"};
+
+let school = null;       // {ATPT_OFCDC_SC_CODE, SD_SCHUL_CODE}
+let date = new Date();
+
+const $ = id => document.getElementById(id);
+function pad(n){return String(n).padStart(2,"0");}
+function toYMD(d){return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;}
+function toISO(d){return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;}
+function fromISO(s){const[a,b,c]=s.split("-").map(Number);return new Date(a,b-1,c);}
+function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x;}
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));}
+
+function parseNeis(json,service){
+  if(!json) return {rows:[],code:"ERR",message:"응답이 없습니다."};
+  if(json.RESULT) return {rows:[],code:json.RESULT.CODE,message:json.RESULT.MESSAGE};
+  const svc=json[service];
+  if(!Array.isArray(svc)) return {rows:[],code:"ERR",message:"응답 형식 오류"};
+  const head=(svc[0]&&svc[0].head)||[];
+  const r=head.find(h=>h.RESULT);
+  return {rows:(svc[1]&&svc[1].row)||[],code:r&&r.RESULT.CODE,message:r&&r.RESULT.MESSAGE};
+}
+async function callNeis(service,params){
+  const sp=new URLSearchParams(Object.assign({Type:"json",pIndex:"1",pSize:"100"},params));
+  if(API_KEY) sp.set("KEY",API_KEY);
+  let res;
+  try{ res=await fetch(HUB+service+"?"+sp.toString()); }
+  catch(e){ throw new Error("NEIS 서버에 연결하지 못했습니다. 인터넷 연결을 확인하거나, 파일을 브라우저에서 직접 열었는지 확인해 주세요."); }
+  return parseNeis(await res.json(),service);
+}
+function cleanDish(raw){
+  const t=raw.replace(/\s+/g," ").trim();
+  const m=t.match(/\s*\(?([0-9]+(?:\s*\.\s*[0-9]+)*)\.?\)?\s*$/);
+  if(m&&m.index>0) return {name:t.slice(0,m.index).trim(),codes:(m[1].match(/\d+/g)||[])};
+  return {name:t,codes:[]};
+}
+
+async function resolveSchool(){
+  const {rows}=await callNeis("schoolInfo",{SCHUL_NM:SCHOOL_NAME});
+  if(!rows.length) throw new Error(`'${SCHOOL_NAME}' 학교를 찾지 못했습니다.`);
+  const hit = rows.find(r=>(r.LCTN_SC_NM||"").indexOf("경상남")>=0) || rows[0];
+  school = {ATPT_OFCDC_SC_CODE:hit.ATPT_OFCDC_SC_CODE, SD_SCHUL_CODE:hit.SD_SCHUL_CODE};
+  $("sub").textContent = `${hit.LCTN_SC_NM||REGION} · ${hit.ORG_RDNMA||"급식 식단"}`;
+}
+
+function stateHTML(icon,title,desc){
+  return `<div class="state"><div class="state-icon">${icon}</div><div class="state-title">${esc(title)}</div><div class="state-desc">${esc(desc)}</div></div>`;
+}
+function mealCard(m){
+  const dishes=(m.DDISH_NM||"").split(/<br\s*\/?>/i).map(cleanDish).filter(d=>d.name);
+  const used=[...new Set(dishes.flatMap(d=>d.codes))].map(Number).sort((a,b)=>a-b);
+  const ntr=(m.NTR_INFO||"").split(/<br\s*\/?>/i).map(s=>s.trim()).filter(Boolean);
+  const ori=(m.ORPLC_INFO||"").split(/<br\s*\/?>/i).map(s=>s.trim()).filter(Boolean);
+  return `<div class="meal-card">
+    <div class="meal-head"><span class="meal-type">${esc(m.MMEAL_SC_NM||"급식")}</span>
+      ${m.CAL_INFO?`<span class="meal-cal">🔥 ${esc(m.CAL_INFO.trim())}</span>`:""}</div>
+    <ul class="dish-list">${dishes.map(d=>`<li><span class="dish-name">${esc(d.name)}</span>${d.codes.length?`<span class="dish-codes">${esc(d.codes.join("·"))}</span>`:""}</li>`).join("")}</ul>
+    ${used.length?`<div class="allergy">ℹ 알레르기 유발 식재료 &nbsp;${used.map(c=>esc(c+" "+(ALLERGY[c]||""))).join("  ·  ")}</div>`:""}
+    ${(ntr.length||ori.length)?`<details class="more"><summary>영양 · 원산지 보기</summary>
+      ${ntr.length?`<div class="more-block"><b>영양정보</b><p>${esc(ntr.join(" · "))}</p></div>`:""}
+      ${ori.length?`<div class="more-block"><b>원산지</b><p>${esc(ori.join(" · "))}</p></div>`:""}</details>`:""}
+  </div>`;
+}
+
+async function loadMeal(){
+  const body=$("body");
+  const wd=["일","월","화","수","목","금","토"][date.getDay()];
+  $("dateLabel").textContent=`${date.getMonth()+1}월 ${date.getDate()}일 (${wd})`;
+  $("dateInput").value=toISO(date);
+  body.innerHTML=`<div class="state"><div class="spin" style="font-size:26px;">⏳</div></div>`;
+  try{
+    if(!school) await resolveSchool();
+    const {rows,code,message}=await callNeis("mealServiceDietInfo",{
+      ATPT_OFCDC_SC_CODE:school.ATPT_OFCDC_SC_CODE, SD_SCHUL_CODE:school.SD_SCHUL_CODE, MLSV_YMD:toYMD(date)});
+    if(rows.length===0){
+      if(code&&code!=="INFO-000"&&code!=="INFO-200") body.innerHTML=`<div class="notice err">${esc(message||"급식 정보를 불러오지 못했습니다.")}</div>`;
+      else body.innerHTML=stateHTML("🍱","이 날은 급식이 없어요","주말·공휴일·방학이거나 아직 식단이 등록되지 않았을 수 있습니다.");
+      return;
+    }
+    body.innerHTML=`<div style="display:flex;flex-direction:column;gap:14px;">${rows.map(mealCard).join("")}</div>`;
+  }catch(e){ body.innerHTML=`<div class="notice err">${esc(e.message)}</div>`; }
+}
+
+$("prev").onclick=()=>{date=addDays(date,-1);loadMeal();};
+$("next").onclick=()=>{date=addDays(date,1);loadMeal();};
+$("today").onclick=()=>{date=new Date();loadMeal();};
+$("dateInput").onchange=e=>{date=fromISO(e.target.value);loadMeal();};
+
+loadMeal();
+</script>
+</body>
+</html>
