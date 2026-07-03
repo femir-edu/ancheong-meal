@@ -1,5 +1,5 @@
 /* 안청초등학교 급식 PWA 서비스워커 */
-const CACHE = "ancheong-meal-v1";
+const CACHE = "ancheong-meal-v2";
 const SHELL = [
   "./",
   "./index.html",
